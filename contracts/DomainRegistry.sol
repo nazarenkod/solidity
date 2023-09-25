@@ -43,7 +43,6 @@ modifier isValidDomain(string memory _tld) {
 
     function registerDomain(string memory _tld) public hasRequiredDeposit(REQUIRED_DEPOSIT) domainDoesNotExist(_tld) isValidDomain(_tld) payable {
 
-    // Додаємо новий домен до мапи
     domains[_tld] = Domain({
         controller: msg.sender,
         tld: _tld,
