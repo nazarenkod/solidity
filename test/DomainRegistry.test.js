@@ -68,7 +68,7 @@ describe("DomainRegistry", function () {
   it("Should fail to register an invalid domain", async function () {
     // Попробуйте зарегистрировать домен с недопустимым доменным уровнем (например, "invalid"), и проверьте, что он вернул ошибку.
     await expect(
-      domainRegistry.connect(owner).registerDomain("invalid", {
+      domainRegistry.connect(owner).registerDomain("business.com", {
         value: hre.ethers.parseEther("1.0"),
       })
     ).to.be.revertedWith("Wrong domain level");
