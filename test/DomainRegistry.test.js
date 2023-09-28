@@ -2,42 +2,44 @@ const { expect } = require("chai");
 
 describe("DomainRegistry", function () {
   let domainRegistry;
-  let domainName;
-  let owner; 
+  let owner;
 
-  before(async function () {    
+  beforeEach(async function () {
     const hre = require("hardhat");
     const DomainRegistry = await hre.ethers.getContractFactory("DomainRegistry");
     domainRegistry = await DomainRegistry.deploy();
     [owner] = await hre.ethers.getSigners();
-    domainName = "com"; 
-    const amountInEther = "1.0";
-    const amountInWei = hre.ethers.parseEther(amountInEther);
-    const registerTransaction = await domainRegistry.connect(owner).registerDomain(domainName, {
-      value: amountInWei,
+  });
+
+  it("Should register a new .com domain", async function () {
+    const domainForThisTest = "com";
+    const tx = await domainRegistry.connect(owner).registerDomain(domainForThisTest, {
+        value: hre.ethers.parseEther("1.0"),
     });
-
-    await registerTransaction.wait();
+    await tx.wait();
+    const domainInfo = await domainRegistry.domains(domainForThisTest);
+    expect(domainInfo.isRegistered).to.be.true;
+    expect(domainInfo.deposit).to.equal(hre.ethers.parseEther("1.0"));
   });
 
-  it("Should register a new domain", async function () {    
-    const domainInfo = await domainRegistry.getDomain(domainName);
-    expect(domainInfo[3]).to.be.true;
-  });
-
-  it("Should release a registered domain", async function () {
-    await domainRegistry.connect(owner).releaseDomain(domainName);
-    const domainInfo = await domainRegistry.getDomain(domainName);
-    expect(domainInfo[3]).to.be.false;
-  });
-
-  it("Should fail to register a duplicate domain", async function () {
-    const uniqueTld = "com";
-    await domainRegistry.connect(owner).registerDomain(uniqueTld, {
+  it("Should release a registered .gov domain", async function () {
+    const domainForThisTest = "gov";
+    await domainRegistry.connect(owner).registerDomain(domainForThisTest, {
       value: hre.ethers.parseEther("1.0"),
     });
+    await domainRegistry.connect(owner).releaseDomain(domainForThisTest);
+    const domainInfo = await domainRegistry.domains(domainForThisTest);
+    expect(domainInfo.isRegistered).to.be.false;
+    expect(domainInfo.deposit).to.equal(0);
+  });
+
+  it("Should fail to register a duplicate .com domain", async function () {
+    const domainForThisTest = "com"; 
+    await domainRegistry.connect(owner).registerDomain(domainForThisTest, {
+        value: hre.ethers.parseEther("1.0"),
+    });
     await expect(
-      domainRegistry.connect(owner).registerDomain(uniqueTld, {
+      domainRegistry.connect(owner).registerDomain(domainForThisTest, {
         value: hre.ethers.parseEther("1.0"),
       })
     ).to.be.revertedWith("Domain exists");
@@ -45,28 +47,25 @@ describe("DomainRegistry", function () {
 
   it("Should fail to register an invalid domain", async function () {
     await expect(
-      domainRegistry.connect(owner).registerDomain("business.com", {
+      domainRegistry.connect(owner).registerDomain("invalid", {
         value: hre.ethers.parseEther("1.0"),
       })
     ).to.be.revertedWith("Wrong domain level");
   });
 
   it("Should fail to register a domain with insufficient deposit", async function () {
+    const insufficientTld = "com";
     await expect(
-      domainRegistry.connect(owner).registerDomain("org", {
+      domainRegistry.connect(owner).registerDomain(insufficientTld, {
         value: hre.ethers.parseEther("0.5"),
       })
     ).to.be.revertedWith("Wrong eth amount");
   });
 
-  it("Should fail to release a non-existing domain", async function () {
+  it("Should fail to release a non-existing .org domain", async function () {
+    const nonExistingTld = "org";
     await expect(
-      domainRegistry.connect(owner).releaseDomain("nonexisting")
-    ).to.be.revertedWith("Domain isnt registered");
-  });
-
-  it("Should get domain information", async function () {
-    const domainInfo = await domainRegistry.getDomain(domainName);
-    expect(domainInfo[0]).to.equal(owner.address);
+      domainRegistry.connect(owner).releaseDomain(nonExistingTld)
+    ).to.be.revertedWith("Domain isn't registered");
   });
 });

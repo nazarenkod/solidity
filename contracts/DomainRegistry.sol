@@ -6,15 +6,14 @@ contract DomainRegistry {
     uint256 constant REQUIRED_DEPOSIT = 1 ether;
 
     struct Domain {
-        address controller;
-        uint256 createdTimestamp;
         uint256 deposit;
         bool isRegistered;
     }
 
     mapping(string => Domain) public domains;
 
-    event DomainCreated(address indexed controller, bytes32 indexed tldHash, string tld, uint256 createdTimestamp, uint256 deposit);
+    event DomainCreated(string tld, uint256 deposit);
+    event DomainReleased(string tld);
 
     modifier hasRequiredDeposit(uint256 _requiredDeposit) {
         require(msg.value >= _requiredDeposit, "Wrong eth amount");
@@ -33,29 +32,24 @@ contract DomainRegistry {
 
     function registerDomain(string memory _tld) public hasRequiredDeposit(REQUIRED_DEPOSIT) domainDoesNotExist(_tld) isValidDomain(_tld) payable {
         domains[_tld] = Domain({
-            controller: msg.sender,
-            createdTimestamp: block.timestamp,
             deposit: msg.value,
             isRegistered: true
         });
 
-        emit DomainCreated(msg.sender, keccak256(bytes(_tld)), _tld, block.timestamp, msg.value);
+        emit DomainCreated(_tld, msg.value);
     }
 
     function releaseDomain(string memory _tld) public {
         Domain storage domain = domains[_tld];
-        require(domain.isRegistered, "Domain isnt registered");
-        require(msg.sender == domain.controller, "Error permission");
-        
+        require(domain.isRegistered, "Domain isn't registered");
+        require(msg.sender == tx.origin, "Contracts cannot release domains");
+    
         uint256 depositAmount = domain.deposit;
         domain.isRegistered = false;
         domain.deposit = 0;
-        
+    
         payable(msg.sender).transfer(depositAmount);
-    }
 
-    function getDomain(string memory _tld) public view returns (address, uint256, uint256, bool) {
-        Domain memory domain = domains[_tld];
-        return (domain.controller, domain.createdTimestamp, domain.deposit, domain.isRegistered);
+        emit DomainReleased(_tld);
     }
 }
