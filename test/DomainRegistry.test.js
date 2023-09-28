@@ -22,13 +22,13 @@ describe("DomainRegistry", function () {
 
   it("Should register a new domain", async function () {    
     const domainInfo = await domainRegistry.getDomain(domainName);
-    expect(domainInfo[4]).to.be.true;
+    expect(domainInfo[3]).to.be.true;
   });
 
   it("Should release a registered domain", async function () {
     await domainRegistry.connect(owner).releaseDomain(domainName);
     const domainInfo = await domainRegistry.getDomain(domainName);
-    expect(domainInfo[4]).to.be.false;
+    expect(domainInfo[3]).to.be.false;
   });
 
   it("Should fail to register a duplicate domain", async function () {
@@ -68,7 +68,5 @@ describe("DomainRegistry", function () {
   it("Should get domain information", async function () {
     const domainInfo = await domainRegistry.getDomain(domainName);
     expect(domainInfo[0]).to.equal(owner.address);
-    expect(domainInfo[1]).to.equal(domainName);
   });
 });
-

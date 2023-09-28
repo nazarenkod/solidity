@@ -3,29 +3,22 @@
 pragma solidity 0.8.20;
 
 contract DomainRegistry {
-    uint256 constant REQUIRED_DEPOSIT = 1 ether; 
-    
-    
+    uint256 constant REQUIRED_DEPOSIT = 1 ether;
 
     struct Domain {
-        address controller; 
-        string tld; 
-        uint256 createdTimestamp; 
-        uint256 deposit; 
-        bool isRegistered; 
-        
+        address controller;
+        uint256 createdTimestamp;
+        uint256 deposit;
+        bool isRegistered;
     }
 
-
-    
     mapping(string => Domain) public domains;
 
     event DomainCreated(address indexed controller, string indexed tld, uint256 createdTimestamp, uint256 deposit);
 
-   
     modifier hasRequiredDeposit(uint256 _requiredDeposit) {
         require(msg.value >= _requiredDeposit, "Wrong eth amount");
-         _;
+        _;
     }
 
     modifier domainDoesNotExist(string memory _tld) {
@@ -33,26 +26,21 @@ contract DomainRegistry {
         _;
     }
 
-modifier isValidDomain(string memory _tld) {
-    require(keccak256(bytes(_tld)) == keccak256(bytes("com")) || keccak256(bytes(_tld)) == keccak256(bytes("gov")), "Wrong domain level");
-    _;
-}
-
-
+    modifier isValidDomain(string memory _tld) {
+        require(keccak256(bytes(_tld)) == keccak256(bytes("com")) || keccak256(bytes(_tld)) == keccak256(bytes("gov")), "Wrong domain level");
+        _;
+    }
 
     function registerDomain(string memory _tld) public hasRequiredDeposit(REQUIRED_DEPOSIT) domainDoesNotExist(_tld) isValidDomain(_tld) payable {
+        domains[_tld] = Domain({
+            controller: msg.sender,
+            createdTimestamp: block.timestamp,
+            deposit: msg.value,
+            isRegistered: true
+        });
 
-    domains[_tld] = Domain({
-        controller: msg.sender,
-        tld: _tld,
-        createdTimestamp: block.timestamp,
-        deposit: msg.value,
-        isRegistered: true
-    });
-
-
-    emit DomainCreated(msg.sender, _tld, block.timestamp, msg.value);
-}
+        emit DomainCreated(msg.sender, _tld, block.timestamp, msg.value);
+    }
 
     function releaseDomain(string memory _tld) public {
         Domain storage domain = domains[_tld];
@@ -66,8 +54,8 @@ modifier isValidDomain(string memory _tld) {
         payable(msg.sender).transfer(depositAmount);
     }
 
-    function getDomain(string memory _tld) public view returns (address, string memory, uint256, uint256, bool) {
+    function getDomain(string memory _tld) public view returns (address, uint256, uint256, bool) {
         Domain memory domain = domains[_tld];
-        return (domain.controller, domain.tld, domain.createdTimestamp, domain.deposit, domain.isRegistered);
+        return (domain.controller, domain.createdTimestamp, domain.deposit, domain.isRegistered);
     }
 }
