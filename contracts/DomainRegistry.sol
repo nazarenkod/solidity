@@ -17,13 +17,12 @@ contract DomainRegistry {
     }
 
 
-    // Мапа для зберігання доменів, де ключ - це назва домену верхнього рівня
+    
     mapping(string => Domain) public domains;
 
-    // Подія, яка виникає при створенні нового домену
     event DomainCreated(address indexed controller, string indexed tld, uint256 createdTimestamp, uint256 deposit);
 
-    // Модифікатор перевірки застави
+   
     modifier hasRequiredDeposit(uint256 _requiredDeposit) {
         require(msg.value >= _requiredDeposit, "Wrong eth amount");
          _;
@@ -55,8 +54,6 @@ modifier isValidDomain(string memory _tld) {
     emit DomainCreated(msg.sender, _tld, block.timestamp, msg.value);
 }
 
-
-    // Функція для звільнення домену та повернення застави ETH
     function releaseDomain(string memory _tld) public {
         Domain storage domain = domains[_tld];
         require(domain.isRegistered, "Domain isnt registered");
@@ -66,11 +63,9 @@ modifier isValidDomain(string memory _tld) {
         domain.isRegistered = false;
         domain.deposit = 0;
         
-        // Повертаємо заставу ETH контролеру
         payable(msg.sender).transfer(depositAmount);
     }
 
-    // Функція для отримання інформації про домен
     function getDomain(string memory _tld) public view returns (address, string memory, uint256, uint256, bool) {
         Domain memory domain = domains[_tld];
         return (domain.controller, domain.tld, domain.createdTimestamp, domain.deposit, domain.isRegistered);
