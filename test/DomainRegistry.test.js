@@ -2,7 +2,7 @@ const { expect } = require("chai");
 
 describe("DomainRegistry", function () {
   let domainRegistry;
-  let tldToRegister;
+  let domainName;
   let owner; 
 
   before(async function () {    
@@ -10,10 +10,10 @@ describe("DomainRegistry", function () {
     const DomainRegistry = await hre.ethers.getContractFactory("DomainRegistry");
     domainRegistry = await DomainRegistry.deploy();
     [owner] = await hre.ethers.getSigners();
-    tldToRegister = "com"; 
+    domainName = "com"; 
     const amountInEther = "1.0";
     const amountInWei = hre.ethers.parseEther(amountInEther);
-    const registerTransaction = await domainRegistry.connect(owner).registerDomain(tldToRegister, {
+    const registerTransaction = await domainRegistry.connect(owner).registerDomain(domainName, {
       value: amountInWei,
     });
 
@@ -21,13 +21,13 @@ describe("DomainRegistry", function () {
   });
 
   it("Should register a new domain", async function () {    
-    const domainInfo = await domainRegistry.getDomain(tldToRegister);
+    const domainInfo = await domainRegistry.getDomain(domainName);
     expect(domainInfo[4]).to.be.true;
   });
 
   it("Should release a registered domain", async function () {
-    await domainRegistry.connect(owner).releaseDomain(tldToRegister);
-    const domainInfo = await domainRegistry.getDomain(tldToRegister);
+    await domainRegistry.connect(owner).releaseDomain(domainName);
+    const domainInfo = await domainRegistry.getDomain(domainName);
     expect(domainInfo[4]).to.be.false;
   });
 
@@ -66,9 +66,9 @@ describe("DomainRegistry", function () {
   });
 
   it("Should get domain information", async function () {
-    const domainInfo = await domainRegistry.getDomain(tldToRegister);
+    const domainInfo = await domainRegistry.getDomain(domainName);
     expect(domainInfo[0]).to.equal(owner.address);
-    expect(domainInfo[1]).to.equal(tldToRegister);
+    expect(domainInfo[1]).to.equal(domainName);
   });
 });
 
