@@ -25,12 +25,14 @@ contract DomainRegistry {
         _;
     }
 
-    modifier isValidDomain(string memory _tld) {
-        require(keccak256(bytes(_tld)) == keccak256(bytes("com")) || keccak256(bytes(_tld)) == keccak256(bytes("gov")), "Wrong domain level");
+    modifier isTopLevelDomain(string memory _tld) {
+        require(bytes(_tld).length > 0, "Domain is empty");
+        require(bytes(_tld)[0] != bytes(".")[0], "Multilevel domains are not allowed");
+        require(bytes(_tld)[bytes(_tld).length - 1] != bytes(".")[0], "Multilevel domains are not allowed");
         _;
-    }
+}
 
-    function registerDomain(string memory _tld) public hasRequiredDeposit(REQUIRED_DEPOSIT) domainDoesNotExist(_tld) isValidDomain(_tld) payable {
+    function registerDomain(string memory _tld) public hasRequiredDeposit(REQUIRED_DEPOSIT) domainDoesNotExist(_tld) isTopLevelDomain(_tld) payable {
         domains[_tld] = Domain({
             deposit: msg.value,
             isRegistered: true
@@ -41,15 +43,11 @@ contract DomainRegistry {
 
     function releaseDomain(string memory _tld) public {
         Domain storage domain = domains[_tld];
-        require(domain.isRegistered, "Domain isn't registered");
-        require(msg.sender == tx.origin, "Contracts cannot release domains");
-    
+        require(domain.isRegistered, "Domain isn't registered");    
         uint256 depositAmount = domain.deposit;
         domain.isRegistered = false;
         domain.deposit = 0;
-    
         payable(msg.sender).transfer(depositAmount);
-
         emit DomainReleased(_tld);
     }
 }

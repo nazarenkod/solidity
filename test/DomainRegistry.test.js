@@ -45,12 +45,28 @@ describe("DomainRegistry", function () {
     ).to.be.revertedWith("Domain exists");
   });
 
-  it("Should fail to register an invalid domain", async function () {
+  it("Should fail to register a multilevel domain", async function () {
     await expect(
-      domainRegistry.connect(owner).registerDomain("invalid", {
+      domainRegistry.connect(owner).registerDomain(".business.com", {
         value: hre.ethers.parseEther("1.0"),
       })
-    ).to.be.revertedWith("Wrong domain level");
+    ).to.be.revertedWith("Multilevel domains are not allowed");
+  });
+
+  it("Should fail to register a domain wich finish with dot", async function () {
+    await expect(
+      domainRegistry.connect(owner).registerDomain("business.", {
+        value: hre.ethers.parseEther("1.0"),
+      })
+    ).to.be.revertedWith("Multilevel domains are not allowed");
+  });
+
+  it("Should fail to register empty domain", async function () {
+    await expect(
+      domainRegistry.connect(owner).registerDomain("", {
+        value: hre.ethers.parseEther("1.0"),
+      })
+    ).to.be.revertedWith("Domain is empty");
   });
 
   it("Should fail to register a domain with insufficient deposit", async function () {
