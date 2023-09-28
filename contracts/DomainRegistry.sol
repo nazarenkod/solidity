@@ -14,7 +14,7 @@ contract DomainRegistry {
 
     mapping(string => Domain) public domains;
 
-    event DomainCreated(address indexed controller, string indexed tld, uint256 createdTimestamp, uint256 deposit);
+    event DomainCreated(address indexed controller, bytes32 indexed tldHash, string tld, uint256 createdTimestamp, uint256 deposit);
 
     modifier hasRequiredDeposit(uint256 _requiredDeposit) {
         require(msg.value >= _requiredDeposit, "Wrong eth amount");
@@ -39,7 +39,7 @@ contract DomainRegistry {
             isRegistered: true
         });
 
-        emit DomainCreated(msg.sender, _tld, block.timestamp, msg.value);
+        emit DomainCreated(msg.sender, keccak256(bytes(_tld)), _tld, block.timestamp, msg.value);
     }
 
     function releaseDomain(string memory _tld) public {
