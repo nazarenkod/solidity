@@ -2,86 +2,86 @@ const { expect } = require("chai");
 
 describe("DomainRegistry", function () {
   let domainRegistry;
-  let owner;
 
   beforeEach(async function () {
     const hre = require("hardhat");
     const DomainRegistry = await hre.ethers.getContractFactory("DomainRegistry");
     domainRegistry = await DomainRegistry.deploy();
-    [owner] = await hre.ethers.getSigners();
   });
 
   it("Should register a new .com domain", async function () {
-    const domainForThisTest = "com";
-    const tx = await domainRegistry.connect(owner).registerDomain(domainForThisTest, {
+    const _topLevelDomain = "com";
+    await domainRegistry.registerDomain(_topLevelDomain, {
         value: hre.ethers.parseEther("1.0"),
     });
-    await tx.wait();
-    const domainInfo = await domainRegistry.domains(domainForThisTest);
+    const domainInfo = await domainRegistry.domains(_topLevelDomain);
     expect(domainInfo.isRegistered).to.be.true;
     expect(domainInfo.deposit).to.equal(hre.ethers.parseEther("1.0"));
   });
 
   it("Should release a registered .gov domain", async function () {
-    const domainForThisTest = "gov";
-    await domainRegistry.connect(owner).registerDomain(domainForThisTest, {
+    const _topLevelDomain = "gov";
+    await domainRegistry.registerDomain(_topLevelDomain, {
       value: hre.ethers.parseEther("1.0"),
     });
-    await domainRegistry.connect(owner).releaseDomain(domainForThisTest);
-    const domainInfo = await domainRegistry.domains(domainForThisTest);
+    await domainRegistry.releaseDomain(_topLevelDomain);
+    const domainInfo = await domainRegistry.domains(_topLevelDomain);
     expect(domainInfo.isRegistered).to.be.false;
     expect(domainInfo.deposit).to.equal(0);
   });
 
   it("Should fail to register a duplicate .com domain", async function () {
-    const domainForThisTest = "com"; 
-    await domainRegistry.connect(owner).registerDomain(domainForThisTest, {
+    const _topLevelDomain = "com"; 
+    await domainRegistry.registerDomain(_topLevelDomain, {
         value: hre.ethers.parseEther("1.0"),
     });
     await expect(
-      domainRegistry.connect(owner).registerDomain(domainForThisTest, {
+      domainRegistry.registerDomain(_topLevelDomain, {
         value: hre.ethers.parseEther("1.0"),
       })
     ).to.be.revertedWith("Domain exists");
   });
 
   it("Should fail to register a multilevel domain", async function () {
+    const _topLevelDomain = ".business.com";
     await expect(
-      domainRegistry.connect(owner).registerDomain(".business.com", {
+      domainRegistry.registerDomain(_topLevelDomain, {
         value: hre.ethers.parseEther("1.0"),
       })
     ).to.be.revertedWith("Multilevel domains are not allowed");
   });
 
-  it("Should fail to register a domain wich finish with dot", async function () {
+  it("Should fail to register a domain which finishes with a dot", async function () {
+    const _topLevelDomain = "business.";
     await expect(
-      domainRegistry.connect(owner).registerDomain("business.", {
+      domainRegistry.registerDomain(_topLevelDomain, {
         value: hre.ethers.parseEther("1.0"),
       })
     ).to.be.revertedWith("Multilevel domains are not allowed");
   });
 
-  it("Should fail to register empty domain", async function () {
+  it("Should fail to register an empty domain", async function () {
+    const _topLevelDomain = "";
     await expect(
-      domainRegistry.connect(owner).registerDomain("", {
+      domainRegistry.registerDomain(_topLevelDomain, {
         value: hre.ethers.parseEther("1.0"),
       })
     ).to.be.revertedWith("Domain is empty");
   });
 
-  it("Should fail to register a domain with insufficient deposit", async function () {
-    const insufficientTld = "com";
+  it("Should fail to register a domain with an insufficient deposit", async function () {
+    const _topLevelDomain = "com";
     await expect(
-      domainRegistry.connect(owner).registerDomain(insufficientTld, {
+      domainRegistry.registerDomain(_topLevelDomain, {
         value: hre.ethers.parseEther("0.5"),
       })
     ).to.be.revertedWith("Wrong eth amount");
   });
 
   it("Should fail to release a non-existing .org domain", async function () {
-    const nonExistingTld = "org";
+    const _topLevelDomain = "org";
     await expect(
-      domainRegistry.connect(owner).releaseDomain(nonExistingTld)
-    ).to.be.revertedWith("Domain isn't registered");
+      domainRegistry.releaseDomain(_topLevelDomain)
+    ).to.be.revertedWith("Domain doesn't exist");
   });
 });

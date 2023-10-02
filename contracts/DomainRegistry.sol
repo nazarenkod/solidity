@@ -1,5 +1,3 @@
-// SPDX-License-Identifier: MIT
-
 pragma solidity 0.8.20;
 
 contract DomainRegistry {
@@ -8,46 +6,60 @@ contract DomainRegistry {
     struct Domain {
         uint256 deposit;
         bool isRegistered;
+        address owner;
     }
 
     mapping(string => Domain) public domains;
 
-    event DomainCreated(string tld, uint256 deposit);
-    event DomainReleased(string tld);
+    event DomainCreated(string indexed topLevelDomain, uint256 deposit, address indexed owner);
+    event DomainReleased(string indexed topLevelDomain);
 
-    modifier hasRequiredDeposit(uint256 _requiredDeposit) {
-        require(msg.value >= _requiredDeposit, "Wrong eth amount");
+
+    modifier hasRequiredDeposit() {
+        require(msg.value == REQUIRED_DEPOSIT, "Wrong eth amount");
         _;
     }
 
-    modifier domainDoesNotExist(string memory _tld) {
-        require(!domains[_tld].isRegistered, "Domain exists");
+    modifier domainDoesNotExist(string memory _topLevelDomain) {
+        require(!domains[_topLevelDomain].isRegistered, "Domain exists");
         _;
     }
 
-    modifier isTopLevelDomain(string memory _tld) {
-        require(bytes(_tld).length > 0, "Domain is empty");
-        require(bytes(_tld)[0] != bytes(".")[0], "Multilevel domains are not allowed");
-        require(bytes(_tld)[bytes(_tld).length - 1] != bytes(".")[0], "Multilevel domains are not allowed");
+    modifier domainExists(string memory _topLevelDomain) {
+        require(domains[_topLevelDomain].isRegistered, "Domain doesn't exist");
         _;
-}
+    }
 
-    function registerDomain(string memory _tld) public hasRequiredDeposit(REQUIRED_DEPOSIT) domainDoesNotExist(_tld) isTopLevelDomain(_tld) payable {
-        domains[_tld] = Domain({
+    modifier domainOwnedBySender(string memory _topLevelDomain) {
+        require(domains[_topLevelDomain].owner == msg.sender, "Not the domain owner");
+        _;
+    }
+
+    modifier isTopLevelDomain(string memory _topLevelDomain) {
+        require(bytes(_topLevelDomain).length > 0, "Domain is empty");
+        for (uint i = 0; i < bytes(_topLevelDomain).length; i++) {
+            require(bytes(_topLevelDomain)[i] != bytes(".")[0], "Multilevel domains are not allowed");
+        }
+        _;
+    }
+
+    function registerDomain(string memory _topLevelDomain) public hasRequiredDeposit() domainDoesNotExist(_topLevelDomain) isTopLevelDomain(_topLevelDomain) payable {
+        domains[_topLevelDomain] = Domain({
             deposit: msg.value,
-            isRegistered: true
+            isRegistered: true,
+            owner: msg.sender
         });
 
-        emit DomainCreated(_tld, msg.value);
+        emit DomainCreated(_topLevelDomain, msg.value, msg.sender);
     }
 
-    function releaseDomain(string memory _tld) public {
-        Domain storage domain = domains[_tld];
-        require(domain.isRegistered, "Domain isn't registered");    
+    function releaseDomain(string memory _topLevelDomain) public domainExists(_topLevelDomain) domainOwnedBySender(_topLevelDomain) {
+        Domain storage domain = domains[_topLevelDomain];
         uint256 depositAmount = domain.deposit;
         domain.isRegistered = false;
         domain.deposit = 0;
+        domain.owner = address(0);
         payable(msg.sender).transfer(depositAmount);
-        emit DomainReleased(_tld);
+        emit DomainReleased(_topLevelDomain);
     }
 }
