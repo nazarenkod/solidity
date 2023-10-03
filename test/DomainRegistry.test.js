@@ -111,7 +111,6 @@ describe("DomainRegistry", function () {
   });
 
   it("Should successfully register a domain with 'https://' protocol", async function () {
-    // Регистрируем родительский домен "com" перед регистрацией домена с протоколом.
     const parentDomain = "com";
     await domainRegistry.registerDomain(parentDomain, {
         value: hre.ethers.parseEther("1.0"),
