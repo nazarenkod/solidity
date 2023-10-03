@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-library DomainUtils {
+library DomainUtilsAssembly {
     
     function stripProtocol(string memory domain) internal pure returns (string memory) {
         bytes memory httpsPrefix = "https://";
