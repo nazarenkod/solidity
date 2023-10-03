@@ -1,6 +1,10 @@
-pragma solidity 0.8.20;
+pragma solidity ^0.8.20;
+
+import "./DomainUtils.sol";
 
 contract DomainRegistry {
+    using DomainUtils for string;
+
     uint256 constant REQUIRED_DEPOSIT = 1 ether;
 
     struct Domain {
@@ -11,55 +15,83 @@ contract DomainRegistry {
 
     mapping(string => Domain) public domains;
 
-    event DomainCreated(string indexed topLevelDomain, uint256 deposit, address indexed owner);
-    event DomainReleased(string indexed topLevelDomain);
-
+    event DomainCreated(string indexed domainName, uint256 deposit, address indexed owner);
+    event DomainReleased(string indexed domainName);
 
     modifier hasRequiredDeposit() {
         require(msg.value == REQUIRED_DEPOSIT, "Wrong eth amount");
         _;
     }
 
-    modifier domainDoesNotExist(string memory _topLevelDomain) {
-        require(!domains[_topLevelDomain].isRegistered, "Domain exists");
+    modifier domainDoesNotExist(string memory domainName) {
+        domainName = domainName.stripProtocol();
+        require(!domains[domainName].isRegistered, "Domain exists");
         _;
     }
 
-    modifier domainExists(string memory _topLevelDomain) {
-        require(domains[_topLevelDomain].isRegistered, "Domain doesn't exist");
+    modifier domainExists(string memory domainName) {
+        domainName = domainName.stripProtocol();
+        require(domains[domainName].isRegistered, "Domain doesn't exist");
         _;
     }
 
-    modifier domainOwnedBySender(string memory _topLevelDomain) {
-        require(domains[_topLevelDomain].owner == msg.sender, "Not the domain owner");
+    modifier isValidDomain(string memory _domainName) {
+    _domainName = _domainName.stripProtocol();
+    require(bytes(_domainName).length > 0, "Domain is empty");
+    bytes memory domainBytes = bytes(_domainName);
+    require(domainBytes[domainBytes.length - 1] != bytes1('.'), "Domain ends with a dot");
+    _;
+}
+
+    modifier domainOwnedBySender(string memory domainName) {
+        domainName = domainName.stripProtocol();
+        require(domains[domainName].owner == msg.sender, "Not the domain owner");
         _;
     }
 
-    modifier isTopLevelDomain(string memory _topLevelDomain) {
-        require(bytes(_topLevelDomain).length > 0, "Domain is empty");
-        for (uint i = 0; i < bytes(_topLevelDomain).length; i++) {
-            require(bytes(_topLevelDomain)[i] != bytes(".")[0], "Multilevel domains are not allowed");
+    modifier parentDomainExists(string memory domainName) {
+        string memory parentDomain = domainName.extractParentDomain();
+        if (bytes(parentDomain).length > 0) {
+            require(domains[parentDomain].isRegistered, "Parent domain doesn't exist");
         }
         _;
     }
 
-    function registerDomain(string memory _topLevelDomain) public hasRequiredDeposit() domainDoesNotExist(_topLevelDomain) isTopLevelDomain(_topLevelDomain) payable {
-        domains[_topLevelDomain] = Domain({
+    function registerDomain(string memory domainName) 
+        public 
+        hasRequiredDeposit() 
+        domainDoesNotExist(domainName) 
+        isValidDomain(domainName)
+        parentDomainExists(domainName)
+        payable 
+    {
+        domainName = domainName.stripProtocol();
+
+        domains[domainName] = Domain({
             deposit: msg.value,
             isRegistered: true,
             owner: msg.sender
         });
 
-        emit DomainCreated(_topLevelDomain, msg.value, msg.sender);
+        emit DomainCreated(domainName, msg.value, msg.sender);
     }
 
-    function releaseDomain(string memory _topLevelDomain) public domainExists(_topLevelDomain) domainOwnedBySender(_topLevelDomain) {
-        Domain storage domain = domains[_topLevelDomain];
+    function releaseDomain(string memory domainName) 
+        public 
+        domainExists(domainName) 
+        domainOwnedBySender(domainName) 
+    {
+        domainName = domainName.stripProtocol();
+        
+        Domain storage domain = domains[domainName];
         uint256 depositAmount = domain.deposit;
+
         domain.isRegistered = false;
         domain.deposit = 0;
         domain.owner = address(0);
+
         payable(msg.sender).transfer(depositAmount);
-        emit DomainReleased(_topLevelDomain);
+
+        emit DomainReleased(domainName);
     }
 }
