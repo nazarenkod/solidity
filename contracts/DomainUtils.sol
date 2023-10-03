@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
-
-pragma solidity ^0.8.20;
+pragma solidity 0.8.20;
 
 library DomainUtils {
     
@@ -17,12 +15,12 @@ library DomainUtils {
 function extractParentDomain(string memory domain) internal pure returns (string memory) {
     bytes memory domainBytes = bytes(domain);
     uint lastDot = indexOf(domainBytes, bytes1('.'), 0);
-    if (lastDot == type(uint256).max) return ""; // No dots means it's already a TLD
+    if (lastDot == type(uint256).max) return "";
 
     uint secondLastDot = indexOf(domainBytes, bytes1('.'), lastDot + 1);
-    if (secondLastDot == type(uint256).max) return substring(domain, lastDot + 1, domainBytes.length); // If there's only one dot, return the portion after that dot
+    if (secondLastDot == type(uint256).max) return substring(domain, lastDot + 1, domainBytes.length); 
 
-    return substring(domain, secondLastDot + 1, domainBytes.length); // Otherwise, return the portion after the second last dot
+    return substring(domain, secondLastDot + 1, domainBytes.length); 
 }
 
     function hasPrefix(string memory _string, string memory _prefix) internal pure returns (bool) {

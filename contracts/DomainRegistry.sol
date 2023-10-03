@@ -24,25 +24,23 @@ contract DomainRegistry {
         _;
     }
 
-    modifier domainDoesNotExist(string memory domainName) {
-        domainName = domainName.stripProtocol();
-        require(!domains[domainName].isRegistered, "Domain exists");
-        _;
-    }
-
-    modifier domainExists(string memory domainName) {
-        domainName = domainName.stripProtocol();
-        require(domains[domainName].isRegistered, "Domain doesn't exist");
+    modifier domainExistence(string memory domainName, bool shouldExist) {
+        bool exists = domains[domainName.stripProtocol()].isRegistered;
+        if (shouldExist) {
+            require(exists, "Domain doesn't exist");
+        } else {
+            require(!exists, "Domain exists");
+        }
         _;
     }
 
     modifier isValidDomain(string memory _domainName) {
-    _domainName = _domainName.stripProtocol();
-    require(bytes(_domainName).length > 0, "Domain is empty");
-    bytes memory domainBytes = bytes(_domainName);
-    require(domainBytes[domainBytes.length - 1] != bytes1('.'), "Domain ends with a dot");
-    _;
-}
+        _domainName = _domainName.stripProtocol();
+        require(bytes(_domainName).length > 0, "Domain is empty");
+        bytes memory domainBytes = bytes(_domainName);
+        require(domainBytes[domainBytes.length - 1] != bytes1('.'), "Domain ends with a dot");
+        _;
+    }
 
     modifier domainOwnedBySender(string memory domainName) {
         domainName = domainName.stripProtocol();
@@ -61,7 +59,7 @@ contract DomainRegistry {
     function registerDomain(string memory domainName) 
         public 
         hasRequiredDeposit() 
-        domainDoesNotExist(domainName) 
+        domainExistence(domainName, false) 
         isValidDomain(domainName)
         parentDomainExists(domainName)
         payable 
@@ -79,7 +77,7 @@ contract DomainRegistry {
 
     function releaseDomain(string memory domainName) 
         public 
-        domainExists(domainName) 
+        domainExistence(domainName, true) 
         domainOwnedBySender(domainName) 
     {
         domainName = domainName.stripProtocol();
