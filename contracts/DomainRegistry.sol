@@ -24,15 +24,15 @@ contract DomainRegistry {
         _;
     }
 
-    modifier domainExistence(string memory domainName, bool shouldExist) {
-        bool exists = domains[domainName.stripProtocol()].isRegistered;
-        if (shouldExist) {
-            require(exists, "Domain doesn't exist");
-        } else {
-            require(!exists, "Domain exists");
-        }
-        _;
+ modifier domainExistence(string memory domainName, bool shouldExist) {
+    bool exists = domains[domainName.stripProtocol()].owner != address(0);
+    if (shouldExist) {
+        require(exists, "Domain doesn't exist");
+    } else {
+        require(!exists, "Domain exists");
     }
+    _;
+}
 
     modifier isValidDomain(string memory _domainName) {
         _domainName = _domainName.stripProtocol();
