@@ -3,14 +3,29 @@ pragma solidity 0.8.20;
 
 library DomainUtils {
     
-    function stripProtocol(string memory domain) internal pure returns (string memory) {
-        if (hasPrefix(domain, "https://")) {
-            return substring(domain, 8, bytes(domain).length);
-        } else if (hasPrefix(domain, "http://")) {
-            return substring(domain, 7, bytes(domain).length);
-        }
+function stripProtocol(string memory domain) internal pure returns (string memory) {
+    bytes memory domainBytes = bytes(domain);
+    uint len = domainBytes.length;
+
+    if (len == 0) {
         return domain;
     }
+
+    for (uint i = 0; i < len - 1; i++) {
+        if (domainBytes[i] == '/' && domainBytes[i + 1] == '/') {
+            bytes memory resultBytes = new bytes(len - i - 2);
+            for (uint j = i + 2; j < len; j++) {
+                resultBytes[j - i - 2] = domainBytes[j];
+            }
+            return string(resultBytes);
+        }
+    }
+
+    return domain;
+}
+
+
+
 
 function extractParentDomain(string memory domain) internal pure returns (string memory) {
     bytes memory domainBytes = bytes(domain);
