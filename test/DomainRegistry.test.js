@@ -83,16 +83,16 @@ describe("DomainRegistry", function () {
 
   it("Should successfully register a multi-level domain", async function () {
     const topLevelDomain = "com";
-    const secondLevelDomain = "example.com";
+    const secondLevelDomain = "example.com"; 
     await domainRegistry.registerDomain(topLevelDomain, {
       value: hre.ethers.parseEther("1.0"),
     });
     await domainRegistry.registerDomain(secondLevelDomain, {
-      value: hre.ethers.parseEther("1.0"),
+      value: hre.ethers.parseEther("0.5"), 
     });
     const domainInfo = await domainRegistry.domains(secondLevelDomain);
     expect(domainInfo.isRegistered).to.be.true;
-  });
+});
 
   it("Should fail to register a multi-level domain if parent is not registered", async function () {
     const multiLevelDomain = "sub.example.com";
@@ -113,11 +113,11 @@ describe("DomainRegistry", function () {
     });
     
     await domainRegistry.registerDomain(secondLevel, {
-      value: hre.ethers.parseEther("1.0"),
+      value: hre.ethers.parseEther("0.5"),
     });
     
     await domainRegistry.registerDomain(thirdLevel, {
-      value: hre.ethers.parseEther("1.0"),
+      value: hre.ethers.parseEther("0.2"),
     });
 
     const domainInfoThirdLevel = await domainRegistry.domains(thirdLevel);
@@ -132,7 +132,7 @@ describe("DomainRegistry", function () {
 
     const domainWithProtocol = "https://example.com";
     await domainRegistry.registerDomain(domainWithProtocol, {
-        value: hre.ethers.parseEther("1.0"),
+        value: hre.ethers.parseEther("0.5"),
     });
 
     const domainInfo = await domainRegistry.domains("example.com");

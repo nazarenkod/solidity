@@ -7,7 +7,9 @@ contract DomainRegistry {
     using DomainUtils for string;
 
     address public owner;
-    uint256 public registrationFee = 1 ether;
+    uint256 public topLevelRegistrationFee = 1 ether;
+    uint256 public secondLevelRegistrationFee = 0.5 ether;
+    uint256 public otherLevelsRegistrationFee = 0.1 ether; 
     uint256 public refundPercentage = 10;
 
     struct Domain {
@@ -24,8 +26,8 @@ contract DomainRegistry {
         owner = msg.sender;
     }
 
-    modifier hasRequiredFee() {
-        require(msg.value == registrationFee, "Wrong eth amount");
+    modifier hasRequiredFee(uint256 fee) {
+        require(msg.value == fee, "Wrong eth amount");
         _;
     }
 
@@ -34,15 +36,15 @@ contract DomainRegistry {
         _;
     }
 
- modifier domainExistence(string memory domainName, bool shouldExist) {
-    bool exists = domains[domainName.stripProtocol()].owner != address(0);
-    if (shouldExist) {
-        require(exists, "Domain doesn't exist");
-    } else {
-        require(!exists, "Domain exists");
+    modifier domainExistence(string memory domainName, bool shouldExist) {
+        bool exists = domains[domainName.stripProtocol()].owner != address(0);
+        if (shouldExist) {
+            require(exists, "Domain doesn't exist");
+        } else {
+            require(!exists, "Domain exists");
+        }
+        _;
     }
-    _;
-}
 
     modifier isValidDomain(string memory _domainName) {
         _domainName = _domainName.stripProtocol();
@@ -58,33 +60,57 @@ contract DomainRegistry {
         _;
     }
 
-modifier parentDomainExists(string memory domainName) {
-    if (isTopLevelDomain(domainName)) {
+    modifier parentDomainExists(string memory domainName) {
+        if (isTopLevelDomain(domainName)) {
+            _;
+            return;
+        }
+
+        string memory parentDomain = domainName.extractParentDomain();
+        if (bytes(parentDomain).length > 1) {
+            require(domains[parentDomain].isRegistered, "Parent domain doesn't exist");
+        }
         _;
-        return;
-    }
-    
-    string memory parentDomain = domainName.extractParentDomain();
-    if (bytes(parentDomain).length > 1) {  
-        require(domains[parentDomain].isRegistered, "Parent domain doesn't exist");
-    }
-    _;
-}
-
-    function setRegistrationFee(uint256 _fee) external onlyOwner {
-        registrationFee = _fee;
     }
 
-    function registerDomain(string memory domainName) 
-        public 
-        hasRequiredFee() 
-        domainExistence(domainName, false) 
+    function setTopLevelRegistrationFee(uint256 _fee) external onlyOwner {
+        topLevelRegistrationFee = _fee;
+    }
+
+    function setSecondLevelRegistrationFee(uint256 _fee) external onlyOwner {
+        secondLevelRegistrationFee = _fee;
+    }
+
+    function setOtherLevelsRegistrationFee(uint256 _fee) external onlyOwner {
+        otherLevelsRegistrationFee = _fee;
+    }
+
+    function setRefundPercentage(uint256 _percentage) external onlyOwner {
+        refundPercentage = _percentage;
+    }
+
+ function registerDomain(string memory domainName)
+        public
+        payable
+        domainExistence(domainName, false)
         isValidDomain(domainName)
         parentDomainExists(domainName)
-        payable 
     {
         domainName = domainName.stripProtocol();
         require(bytes(domainName).length > 0, "Domain cannot be empty");
+
+        uint256 fee;
+        uint8 domainLevel = domainName.getDomainLevel(); 
+
+        if (domainLevel == 1) {
+            fee = topLevelRegistrationFee;
+        } else if (domainLevel == 2) {
+            fee = secondLevelRegistrationFee;
+        } else {
+            fee = otherLevelsRegistrationFee * (domainLevel - 1); 
+        }
+
+        require(msg.value == fee, "Wrong eth amount");
 
         domains[domainName] = Domain({
             isRegistered: true,
@@ -93,19 +119,19 @@ modifier parentDomainExists(string memory domainName) {
 
         emit DomainCreated(domainName, msg.sender);
     }
-    //Money back for release domain with refundPercentage
-    function releaseDomain(string memory domainName) 
-        public 
-        domainExistence(domainName, true) 
-        domainOwnedBySender(domainName) 
+
+    function releaseDomain(string memory domainName)
+        public
+        domainExistence(domainName, true)
+        domainOwnedBySender(domainName)
     {
         domainName = domainName.stripProtocol();
-        
+
         Domain storage domain = domains[domainName];
         domain.isRegistered = false;
         domain.owner = address(0);
 
-        uint256 refundAmount = (registrationFee * refundPercentage) / 100; 
+        uint256 refundAmount = (topLevelRegistrationFee * refundPercentage) / 100;
         payable(msg.sender).transfer(refundAmount);
 
         emit DomainReleased(domainName);
@@ -117,20 +143,14 @@ modifier parentDomainExists(string memory domainName) {
     }
 
     function isTopLevelDomain(string memory domainName) internal pure returns (bool) {
-    bytes memory domainBytes = bytes(domainName);
-    uint dotCount = 0;
-    for (uint i = 0; i < domainBytes.length; i++) {
-        if (domainBytes[i] == bytes1('.')) {
-            dotCount++;
+        bytes memory domainBytes = bytes(domainName);
+        uint dotCount = 0;
+        for (uint i = 0; i < domainBytes.length; i++) {
+            if (domainBytes[i] == bytes1('.')) {
+                dotCount++;
+            }
         }
+        return dotCount == 0;
     }
-    return dotCount == 0;  
+
 }
-}
-
-
-
-
-
-
-

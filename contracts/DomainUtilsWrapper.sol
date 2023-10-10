@@ -32,4 +32,9 @@ contract DomainUtilsWrapper {
         bytes memory stringBytes = bytes(_string);
         return DomainUtils.lastIndexOf(stringBytes, _value, _start, stringBytes.length);
     }
+
+    function getDomainLevel(string memory domain) public pure returns (uint8) {
+        return domain.getDomainLevel();
+    }
+
 }
