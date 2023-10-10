@@ -25,6 +25,11 @@ contract DomainUtilsWrapper {
 
     function indexOf(string memory _string, bytes1 _value, uint _start) public pure returns (uint) {
         bytes memory stringBytes = bytes(_string);
-        return DomainUtils.indexOf(stringBytes, _value, _start);
+        return DomainUtils.indexOf(stringBytes, _value, _start, stringBytes.length);
+    }
+
+    function lastIndexOf(string memory _string, bytes1 _value, uint _start) public pure returns (uint) {
+        bytes memory stringBytes = bytes(_string);
+        return DomainUtils.lastIndexOf(stringBytes, _value, _start, stringBytes.length);
     }
 }

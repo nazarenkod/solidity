@@ -2,41 +2,45 @@
 pragma solidity 0.8.20;
 
 library DomainUtils {
-    
-function stripProtocol(string memory domain) internal pure returns (string memory) {
-    bytes memory domainBytes = bytes(domain);
-    uint len = domainBytes.length;
 
-    if (len == 0) {
+    function stripProtocol(string memory domain) internal pure returns (string memory) {
+        bytes memory domainBytes = bytes(domain);
+        uint len = domainBytes.length;
+
+        if (len == 0) {
+            return domain;
+        }
+
+        for (uint i = 0; i < len - 1; i++) {
+            if (domainBytes[i] == '/' && domainBytes[i + 1] == '/') {
+                bytes memory resultBytes = new bytes(len - i - 2);
+                for (uint j = i + 2; j < len; j++) {
+                    resultBytes[j - i - 2] = domainBytes[j];
+                }
+                return string(resultBytes);
+            }
+        }
+
         return domain;
     }
 
-    for (uint i = 0; i < len - 1; i++) {
-        if (domainBytes[i] == '/' && domainBytes[i + 1] == '/') {
-            bytes memory resultBytes = new bytes(len - i - 2);
-            for (uint j = i + 2; j < len; j++) {
-                resultBytes[j - i - 2] = domainBytes[j];
-            }
-            return string(resultBytes);
-        }
-    }
-
-    return domain;
-}
-
-
-
-
 function extractParentDomain(string memory domain) internal pure returns (string memory) {
     bytes memory domainBytes = bytes(domain);
-    uint lastDot = indexOf(domainBytes, bytes1('.'), 0);
+    uint lastDot = indexOf(domainBytes, bytes1('.'), 0, domainBytes.length);
+
     if (lastDot == type(uint256).max) return "";
 
-    uint secondLastDot = indexOf(domainBytes, bytes1('.'), lastDot + 1);
-    if (secondLastDot == type(uint256).max) return substring(domain, lastDot + 1, domainBytes.length); 
+    uint secondLastDot = indexOf(domainBytes, bytes1('.'), 0, lastDot);
 
-    return substring(domain, secondLastDot + 1, domainBytes.length); 
+    if (secondLastDot == type(uint256).max) {
+        return substring(domain, lastDot + 1, domainBytes.length); 
+    } else {
+        return substring(domain, secondLastDot + 1, lastDot); 
+    }
 }
+
+
+
 
     function hasPrefix(string memory _string, string memory _prefix) internal pure returns (bool) {
         bytes memory stringBytes = bytes(_string);
@@ -56,10 +60,17 @@ function extractParentDomain(string memory domain) internal pure returns (string
         return string(result);
     }
 
-    function indexOf(bytes memory _bytes, bytes1 _value, uint _start) internal pure returns (uint) {
-        for (uint i = _start; i < _bytes.length; i++) {
-            if (_bytes[i] == _value) return i;
-        }
-        return type(uint256).max;
+function indexOf(bytes memory _bytes, bytes1 _value, uint _start, uint _end) internal pure returns (uint) {
+    for (uint i = _start; i < _end; i++) {
+        if (_bytes[i] == _value) return i;
     }
+    return type(uint256).max;
+}
+
+function lastIndexOf(bytes memory _bytes, bytes1 _value, uint _start, uint _end) internal pure returns (uint) {
+    for (uint i = _end; i > _start; i--) {
+        if (_bytes[i - 1] == _value) return i - 1;
+    }
+    return type(uint256).max;
+}
 }

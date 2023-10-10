@@ -16,5 +16,26 @@ describe("DomainUtils", function () {
 
     it("Should extract parent domain correctly", async function () {
         expect(await domainUtilsWrapper.extractParentDomain("sub.google.com")).to.equal("google.com");
+        expect(await domainUtilsWrapper.extractParentDomain("google.com")).to.equal("com");
     });
+
+    it("Should detect prefixes correctly", async function () {
+      expect(await domainUtilsWrapper.hasPrefix("https://google.com", "https://")).to.be.true;
+      expect(await domainUtilsWrapper.hasPrefix("http://google.com", "https://")).to.be.false;
+      expect(await domainUtilsWrapper.hasPrefix("google.com", "https://")).to.be.false;
+  });
+
+  it("Should extract substrings correctly", async function () {
+      expect(await domainUtilsWrapper.substring("google.com", 0, 6)).to.equal("google");
+      expect(await domainUtilsWrapper.substring("google.com", 7, 10)).to.equal("com");
+  });
+
+  it("Should find the index of a character correctly", async function () {
+      expect(await domainUtilsWrapper.indexOf("google.com", "0x2e", 0));
+  });
+
+  it("Should find the last index of a character correctly", async function () {
+    expect(await domainUtilsWrapper.lastIndexOf("google.com", "0x2e", 0)).to.equal(6); 
+
+});
 });

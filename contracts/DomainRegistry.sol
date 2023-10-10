@@ -48,32 +48,49 @@ contract DomainRegistry {
         _;
     }
 
-    modifier parentDomainExists(string memory domainName) {
-        string memory parentDomain = domainName.extractParentDomain();
-        if (bytes(parentDomain).length > 0) {
-            require(domains[parentDomain].isRegistered, "Parent domain doesn't exist");
-        }
+modifier parentDomainExists(string memory domainName) {
+    if (isTopLevelDomain(domainName)) {
         _;
+        return;
     }
-
-    function registerDomain(string memory domainName) 
-        public 
-        hasRequiredDeposit() 
-        domainExistence(domainName, false) 
-        isValidDomain(domainName)
-        parentDomainExists(domainName)
-        payable 
-    {
-        domainName = domainName.stripProtocol();
-
-        domains[domainName] = Domain({
-            deposit: msg.value,
-            isRegistered: true,
-            owner: msg.sender
-        });
-
-        emit DomainCreated(domainName, msg.value, msg.sender);
+    
+    string memory parentDomain = domainName.extractParentDomain();
+    if (bytes(parentDomain).length > 1) {  
+        require(domains[parentDomain].isRegistered, "Parent domain doesn't exist");
     }
+    _;
+}
+
+function isTopLevelDomain(string memory domainName) internal pure returns (bool) {
+    bytes memory domainBytes = bytes(domainName);
+    uint dotCount = 0;
+    for (uint i = 0; i < domainBytes.length; i++) {
+        if (domainBytes[i] == bytes1('.')) {
+            dotCount++;
+        }
+    }
+    return dotCount == 0;  
+}
+
+function registerDomain(string memory domainName) 
+    public 
+    hasRequiredDeposit() 
+    domainExistence(domainName, false) 
+    isValidDomain(domainName)
+    parentDomainExists(domainName)
+    payable 
+{
+    domainName = domainName.stripProtocol();
+    require(bytes(domainName).length > 0, "Domain cannot be empty");
+
+    domains[domainName] = Domain({
+        deposit: msg.value,
+        isRegistered: true,
+        owner: msg.sender
+    });
+
+    emit DomainCreated(domainName, msg.value, msg.sender);
+}
 
     function releaseDomain(string memory domainName) 
         public 
@@ -93,4 +110,5 @@ contract DomainRegistry {
 
         emit DomainReleased(domainName);
     }
+
 }
