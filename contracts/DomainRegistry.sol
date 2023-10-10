@@ -6,21 +6,31 @@ import "./DomainUtils.sol";
 contract DomainRegistry {
     using DomainUtils for string;
 
-    uint256 constant REQUIRED_DEPOSIT = 1 ether;
+    address public owner;
+    uint256 public registrationFee = 1 ether;
+    uint256 public refundPercentage = 10;
 
     struct Domain {
-        uint256 deposit;
         bool isRegistered;
         address owner;
     }
 
     mapping(string => Domain) public domains;
 
-    event DomainCreated(string indexed domainName, uint256 deposit, address indexed owner);
+    event DomainCreated(string indexed domainName, address indexed owner);
     event DomainReleased(string indexed domainName);
 
-    modifier hasRequiredDeposit() {
-        require(msg.value == REQUIRED_DEPOSIT, "Wrong eth amount");
+    constructor() {
+        owner = msg.sender;
+    }
+
+    modifier hasRequiredFee() {
+        require(msg.value == registrationFee, "Wrong eth amount");
+        _;
+    }
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not authorized");
         _;
     }
 
@@ -61,7 +71,52 @@ modifier parentDomainExists(string memory domainName) {
     _;
 }
 
-function isTopLevelDomain(string memory domainName) internal pure returns (bool) {
+    function setRegistrationFee(uint256 _fee) external onlyOwner {
+        registrationFee = _fee;
+    }
+
+    function registerDomain(string memory domainName) 
+        public 
+        hasRequiredFee() 
+        domainExistence(domainName, false) 
+        isValidDomain(domainName)
+        parentDomainExists(domainName)
+        payable 
+    {
+        domainName = domainName.stripProtocol();
+        require(bytes(domainName).length > 0, "Domain cannot be empty");
+
+        domains[domainName] = Domain({
+            isRegistered: true,
+            owner: msg.sender
+        });
+
+        emit DomainCreated(domainName, msg.sender);
+    }
+    //Money back for release domain with refundPercentage
+    function releaseDomain(string memory domainName) 
+        public 
+        domainExistence(domainName, true) 
+        domainOwnedBySender(domainName) 
+    {
+        domainName = domainName.stripProtocol();
+        
+        Domain storage domain = domains[domainName];
+        domain.isRegistered = false;
+        domain.owner = address(0);
+
+        uint256 refundAmount = (registrationFee * refundPercentage) / 100; 
+        payable(msg.sender).transfer(refundAmount);
+
+        emit DomainReleased(domainName);
+    }
+
+    function withdrawFunds() external onlyOwner {
+        uint256 balance = address(this).balance;
+        payable(msg.sender).transfer(balance);
+    }
+
+    function isTopLevelDomain(string memory domainName) internal pure returns (bool) {
     bytes memory domainBytes = bytes(domainName);
     uint dotCount = 0;
     for (uint i = 0; i < domainBytes.length; i++) {
@@ -71,44 +126,11 @@ function isTopLevelDomain(string memory domainName) internal pure returns (bool)
     }
     return dotCount == 0;  
 }
-
-function registerDomain(string memory domainName) 
-    public 
-    hasRequiredDeposit() 
-    domainExistence(domainName, false) 
-    isValidDomain(domainName)
-    parentDomainExists(domainName)
-    payable 
-{
-    domainName = domainName.stripProtocol();
-    require(bytes(domainName).length > 0, "Domain cannot be empty");
-
-    domains[domainName] = Domain({
-        deposit: msg.value,
-        isRegistered: true,
-        owner: msg.sender
-    });
-
-    emit DomainCreated(domainName, msg.value, msg.sender);
 }
 
-    function releaseDomain(string memory domainName) 
-        public 
-        domainExistence(domainName, true) 
-        domainOwnedBySender(domainName) 
-    {
-        domainName = domainName.stripProtocol();
-        
-        Domain storage domain = domains[domainName];
-        uint256 depositAmount = domain.deposit;
 
-        domain.isRegistered = false;
-        domain.deposit = 0;
-        domain.owner = address(0);
 
-        payable(msg.sender).transfer(depositAmount);
 
-        emit DomainReleased(domainName);
-    }
 
-}
+
+

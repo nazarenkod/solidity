@@ -14,9 +14,9 @@ describe("DomainRegistry", function () {
     await domainRegistry.registerDomain(_topLevelDomain, {
         value: hre.ethers.parseEther("1.0"),
     });
+
     const domainInfo = await domainRegistry.domains(_topLevelDomain);
     expect(domainInfo.isRegistered).to.be.true;
-    expect(domainInfo.deposit).to.equal(hre.ethers.parseEther("1.0"));
   });
 
   it("Should release a registered .gov domain", async function () {
@@ -27,7 +27,21 @@ describe("DomainRegistry", function () {
     await domainRegistry.releaseDomain(_topLevelDomain);
     const domainInfo = await domainRegistry.domains(_topLevelDomain);
     expect(domainInfo.isRegistered).to.be.false;
-    expect(domainInfo.deposit).to.equal(0);
+  });
+
+  it("Should release a registered .gov domain", async function () {
+    const _topLevelDomain = "gov";
+  
+    await domainRegistry.registerDomain(_topLevelDomain, {
+      value: hre.ethers.parseEther("1.0"),
+    });
+    const registeredDomainInfo = await domainRegistry.domains(_topLevelDomain);
+    expect(registeredDomainInfo.isRegistered).to.be.true;
+  
+    await domainRegistry.releaseDomain(_topLevelDomain);
+  
+    const releasedDomainInfo = await domainRegistry.domains(_topLevelDomain);
+    expect(releasedDomainInfo.isRegistered).to.be.false;
   });
 
   it("Should fail to register a duplicate .com domain", async function () {
