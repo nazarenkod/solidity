@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "./DomainUtils.sol";
 
-contract DomainRegistry {
+contract DomainRegistry is Ownable {
+    
+    constructor() Ownable(msg.sender) {}
+    using Address for address payable;
     using DomainUtils for string;
 
-    address public owner;
-    uint256 public topLevelRegistrationFee = 1 ether;
-    uint256 public secondLevelRegistrationFee = 0.5 ether;
-    uint256 public otherLevelsRegistrationFee = 0.1 ether; 
-    uint256 public refundPercentage = 10;
+    uint256 public domainPrice = 1 ether; 
 
     struct Domain {
         bool isRegistered;
@@ -19,32 +20,8 @@ contract DomainRegistry {
 
     mapping(string => Domain) public domains;
 
-    event DomainCreated(string indexed domainName, address indexed owner);
+    event DomainRegistered(string indexed domainName, address indexed owner);
     event DomainReleased(string indexed domainName);
-
-    constructor() {
-        owner = msg.sender;
-    }
-
-    modifier hasRequiredFee(uint256 fee) {
-        require(msg.value == fee, "Wrong eth amount");
-        _;
-    }
-
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Not authorized");
-        _;
-    }
-
-    modifier domainExistence(string memory domainName, bool shouldExist) {
-        bool exists = domains[domainName.stripProtocol()].owner != address(0);
-        if (shouldExist) {
-            require(exists, "Domain doesn't exist");
-        } else {
-            require(!exists, "Domain exists");
-        }
-        _;
-    }
 
     modifier isValidDomain(string memory _domainName) {
         _domainName = _domainName.stripProtocol();
@@ -60,97 +37,58 @@ contract DomainRegistry {
         _;
     }
 
-    modifier parentDomainExists(string memory domainName) {
-        if (isTopLevelDomain(domainName)) {
-            _;
-            return;
-        }
-
-        string memory parentDomain = domainName.extractParentDomain();
-        if (bytes(parentDomain).length > 1) {
-            require(domains[parentDomain].isRegistered, "Parent domain doesn't exist");
+    modifier domainExistence(string memory domainName, bool shouldExist) {
+        bool exists = domains[domainName.stripProtocol()].owner != address(0);
+        if (shouldExist) {
+            require(exists, "Domain doesn't exist");
+        } else {
+            require(!exists, "Domain exists");
         }
         _;
     }
 
-    function setTopLevelRegistrationFee(uint256 _fee) external onlyOwner {
-        topLevelRegistrationFee = _fee;
+    function setDomainPrice(uint256 _price) external onlyOwner {
+        domainPrice = _price;
     }
 
-    function setSecondLevelRegistrationFee(uint256 _fee) external onlyOwner {
-        secondLevelRegistrationFee = _fee;
+
+function registerDomain(string memory domainName) 
+    public 
+    payable 
+    isValidDomain(domainName)
+    domainExistence(domainName, false)
+{
+    require(msg.value == domainPrice, "Incorrect amount sent");
+
+    domainName = domainName.stripProtocol();
+
+    string memory parentDomain = DomainUtils.extractParentDomain(domainName);
+    if (bytes(parentDomain).length > 0) {
+        require(domains[parentDomain].isRegistered, "Parent domain doesn't exist");
     }
 
-    function setOtherLevelsRegistrationFee(uint256 _fee) external onlyOwner {
-        otherLevelsRegistrationFee = _fee;
-    }
+    domains[domainName] = Domain({
+        isRegistered: true,
+        owner: msg.sender
+    });
 
-    function setRefundPercentage(uint256 _percentage) external onlyOwner {
-        refundPercentage = _percentage;
-    }
+    emit DomainRegistered(domainName, msg.sender);
+}
 
- function registerDomain(string memory domainName)
-        public
-        payable
-        domainExistence(domainName, false)
-        isValidDomain(domainName)
-        parentDomainExists(domainName)
+
+    function releaseDomain(string memory domainName) 
+        public 
+        domainExistence(domainName, true) 
+        domainOwnedBySender(domainName) 
     {
         domainName = domainName.stripProtocol();
-        require(bytes(domainName).length > 0, "Domain cannot be empty");
-
-        uint256 fee;
-        uint8 domainLevel = domainName.getDomainLevel(); 
-
-        if (domainLevel == 1) {
-            fee = topLevelRegistrationFee;
-        } else if (domainLevel == 2) {
-            fee = secondLevelRegistrationFee;
-        } else {
-            fee = otherLevelsRegistrationFee * (domainLevel - 1); 
-        }
-
-        require(msg.value == fee, "Wrong eth amount");
-
-        domains[domainName] = Domain({
-            isRegistered: true,
-            owner: msg.sender
-        });
-
-        emit DomainCreated(domainName, msg.sender);
-    }
-
-    function releaseDomain(string memory domainName)
-        public
-        domainExistence(domainName, true)
-        domainOwnedBySender(domainName)
-    {
-        domainName = domainName.stripProtocol();
-
-        Domain storage domain = domains[domainName];
-        domain.isRegistered = false;
-        domain.owner = address(0);
-
-        uint256 refundAmount = (topLevelRegistrationFee * refundPercentage) / 100;
-        payable(msg.sender).transfer(refundAmount);
-
+        delete domains[domainName];
         emit DomainReleased(domainName);
     }
 
-    function withdrawFunds() external onlyOwner {
+    function withdraw() external onlyOwner {
         uint256 balance = address(this).balance;
-        payable(msg.sender).transfer(balance);
+        require(balance > 0, "No funds to withdraw");
+        payable(owner()).sendValue(balance);
     }
-
-    function isTopLevelDomain(string memory domainName) internal pure returns (bool) {
-        bytes memory domainBytes = bytes(domainName);
-        uint dotCount = 0;
-        for (uint i = 0; i < domainBytes.length; i++) {
-            if (domainBytes[i] == bytes1('.')) {
-                dotCount++;
-            }
-        }
-        return dotCount == 0;
-    }
-
 }

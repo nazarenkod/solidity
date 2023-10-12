@@ -34,10 +34,8 @@ describe("DomainUtils", function () {
       expect(await domainUtilsWrapper.indexOf("google.com", "0x2e", 0));
   });
 
-  it("Should domain level", async function () {
-    expect(await domainUtilsWrapper.getDomainLevel("google.com")).to.equal(2); 
-    expect(await domainUtilsWrapper.getDomainLevel("com")).to.equal(1); 
-    expect(await domainUtilsWrapper.getDomainLevel("ex.google.com")).to.equal(3); 
-  });
+  it("Should find the last index of a character correctly", async function () {
+    expect(await domainUtilsWrapper.lastIndexOf("google.com", "0x2e", 0)).to.equal(6); 
 
+});
 });

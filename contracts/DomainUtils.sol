@@ -73,23 +73,4 @@ function lastIndexOf(bytes memory _bytes, bytes1 _value, uint _start, uint _end)
     }
     return type(uint256).max;
 }
-
-function getDomainLevel(string memory domain) internal pure returns (uint8) {
-    bytes memory domainBytes = bytes(domain);
-    uint8 dotCount = 0;
-    for (uint i = 0; i < domainBytes.length; i++) {
-        if (domainBytes[i] == bytes1('.')) {
-            dotCount++;
-        }
-    }
-    
-   
-    if (dotCount == 0) {
-        return 1;
-    } else if (dotCount == 1) {
-        return 2; 
-    } else {
-        return 3; 
-    }
-}
 }
