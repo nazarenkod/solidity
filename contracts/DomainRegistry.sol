@@ -81,7 +81,7 @@ function registerDomain(string memory domainName)
     payable 
 {
     domainName = domainName.stripProtocol();
-    require(bytes(domainName).length > 0, "Domain cannot be empty");
+
 
     domains[domainName] = Domain({
         deposit: msg.value,

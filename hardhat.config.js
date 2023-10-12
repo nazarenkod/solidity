@@ -1,7 +1,7 @@
 require("@nomicfoundation/hardhat-toolbox");
 
 
-const MNEMONIC = ""
+const MNEMONIC = "test test test test test test test test test test test junk"
 const INFURA_API_KEY = "";
 
 
