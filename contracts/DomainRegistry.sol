@@ -102,9 +102,7 @@ function registerDomain(string memory domainName)
         Domain storage domain = domains[domainName];
         uint256 depositAmount = domain.deposit;
 
-        domain.isRegistered = false;
-        domain.deposit = 0;
-        domain.owner = address(0);
+        delete domains[domainName];
 
         payable(msg.sender).transfer(depositAmount);
 
