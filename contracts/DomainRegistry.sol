@@ -1,38 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "./DomainUtils.sol";
 
-contract DomainRegistry {
+contract DomainRegistry is Ownable {
+    
+    constructor() Ownable(msg.sender) {}
+    using Address for address payable;
     using DomainUtils for string;
 
-    uint256 constant REQUIRED_DEPOSIT = 1 ether;
+    uint256 public domainPrice = 1 ether; 
 
     struct Domain {
-        uint256 deposit;
         bool isRegistered;
         address owner;
     }
 
     mapping(string => Domain) public domains;
 
-    event DomainCreated(string indexed domainName, uint256 deposit, address indexed owner);
+    event DomainRegistered(string indexed domainName, address indexed owner);
     event DomainReleased(string indexed domainName);
-
-    modifier hasRequiredDeposit() {
-        require(msg.value == REQUIRED_DEPOSIT, "Wrong eth amount");
-        _;
-    }
-
- modifier domainExistence(string memory domainName, bool shouldExist) {
-    bool exists = domains[domainName.stripProtocol()].owner != address(0);
-    if (shouldExist) {
-        require(exists, "Domain doesn't exist");
-    } else {
-        require(!exists, "Domain exists");
-    }
-    _;
-}
 
     modifier isValidDomain(string memory _domainName) {
         _domainName = _domainName.stripProtocol();
@@ -48,49 +37,44 @@ contract DomainRegistry {
         _;
     }
 
-modifier parentDomainExists(string memory domainName) {
-    if (isTopLevelDomain(domainName)) {
-        _;
-        return;
-    }
-    
-    string memory parentDomain = domainName.extractParentDomain();
-    if (bytes(parentDomain).length > 1) {  
-        require(domains[parentDomain].isRegistered, "Parent domain doesn't exist");
-    }
-    _;
-}
-
-function isTopLevelDomain(string memory domainName) internal pure returns (bool) {
-    bytes memory domainBytes = bytes(domainName);
-    uint dotCount = 0;
-    for (uint i = 0; i < domainBytes.length; i++) {
-        if (domainBytes[i] == bytes1('.')) {
-            dotCount++;
+    modifier domainExistence(string memory domainName, bool shouldExist) {
+        bool exists = domains[domainName.stripProtocol()].owner != address(0);
+        if (shouldExist) {
+            require(exists, "Domain doesn't exist");
+        } else {
+            require(!exists, "Domain exists");
         }
+        _;
     }
-    return dotCount == 0;  
-}
+
+    function setDomainPrice(uint256 _price) external onlyOwner {
+        domainPrice = _price;
+    }
+
 
 function registerDomain(string memory domainName) 
     public 
-    hasRequiredDeposit() 
-    domainExistence(domainName, false) 
-    isValidDomain(domainName)
-    parentDomainExists(domainName)
     payable 
+    isValidDomain(domainName)
+    domainExistence(domainName, false)
 {
+    require(msg.value == domainPrice, "Incorrect amount sent");
+
     domainName = domainName.stripProtocol();
 
+    string memory parentDomain = DomainUtils.extractParentDomain(domainName);
+    if (bytes(parentDomain).length > 0) {
+        require(domains[parentDomain].isRegistered, "Parent domain doesn't exist");
+    }
 
     domains[domainName] = Domain({
-        deposit: msg.value,
         isRegistered: true,
         owner: msg.sender
     });
 
-    emit DomainCreated(domainName, msg.value, msg.sender);
+    emit DomainRegistered(domainName, msg.sender);
 }
+
 
     function releaseDomain(string memory domainName) 
         public 
@@ -98,15 +82,13 @@ function registerDomain(string memory domainName)
         domainOwnedBySender(domainName) 
     {
         domainName = domainName.stripProtocol();
-        
-        Domain storage domain = domains[domainName];
-        uint256 depositAmount = domain.deposit;
-
         delete domains[domainName];
-
-        payable(msg.sender).transfer(depositAmount);
-
         emit DomainReleased(domainName);
     }
 
+    function withdraw() external onlyOwner {
+        uint256 balance = address(this).balance;
+        require(balance > 0, "No funds to withdraw");
+        payable(owner()).sendValue(balance);
+    }
 }
