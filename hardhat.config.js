@@ -1,4 +1,6 @@
+require('@openzeppelin/hardhat-upgrades');
 require("@nomicfoundation/hardhat-toolbox");
+
 
 
 const MNEMONIC = "test test test test test test test test test test test junk"
@@ -21,7 +23,7 @@ module.exports = {
       },
     },
     localhost: {
-      url: "http://127.0.0.1:8545/",
+      url: "http://127.0.0.1:7545",
     },
     sepolia: {
       url: `https://sepolia.infura.io/v3/${INFURA_API_KEY}`,
