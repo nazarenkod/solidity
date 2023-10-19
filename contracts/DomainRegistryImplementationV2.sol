@@ -6,12 +6,15 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./DomainUtils.sol";
 
+/**
+ * @title DomainRegistryImplementationV2
+ * @dev This contract allows users to register and manage domains.
+ */
 contract DomainRegistryImplementationV2 is Initializable, OwnableUpgradeable {
-
     using Address for address payable;
     using DomainUtils for string;
 
-    uint256 public domainPrice; 
+    uint256 public domainPrice;
 
     struct Domain {
         bool isRegistered;
@@ -28,22 +31,31 @@ contract DomainRegistryImplementationV2 is Initializable, OwnableUpgradeable {
     event RewardSet(string indexed domainName, uint256 rewardAmount);
     event RewardClaimed(string indexed childDomain, uint256 rewardAmount);
 
-function initialize() public initializer {
-    __Ownable_init();
-    domainPrice = 1 ether; 
-}
+    /**
+     * @dev Initializes the contract.
+     */
+    function initialize() public initializer {
+        __Ownable_init();
+        domainPrice = 1 ether;
+    }
 
     modifier isValidDomain(string memory _domainName) {
         _domainName = _domainName.stripProtocol();
         require(bytes(_domainName).length > 0, "Domain is empty");
         bytes memory domainBytes = bytes(_domainName);
-        require(domainBytes[domainBytes.length - 1] != bytes1('.'), "Domain ends with a dot");
+        require(
+            domainBytes[domainBytes.length - 1] != bytes1("."),
+            "Domain ends with a dot"
+        );
         _;
     }
 
     modifier domainOwnedBySender(string memory domainName) {
         domainName = domainName.stripProtocol();
-        require(domains[domainName].owner == msg.sender, "Not the domain owner");
+        require(
+            domains[domainName].owner == msg.sender,
+            "Not the domain owner"
+        );
         _;
     }
 
@@ -57,70 +69,129 @@ function initialize() public initializer {
         _;
     }
 
-   function setDomainPrice(uint256 _price) external onlyOwner {
+    /**
+     * @dev Sets the price for registering a domain.
+     * @param _price The new domain registration price.
+     */
+    function setDomainPrice(uint256 _price) external onlyOwner {
         domainPrice = _price;
     }
 
-    function setRewardForChildDomains(string memory domainName, uint256 rewardAmount) external payable domainExistence(domainName, true) domainOwnedBySender(domainName) {
+    /**
+     * @dev Sets a reward for child domains.
+     * @param domainName The parent domain for which to set the reward.
+     * @param rewardAmount The reward amount to set.
+     */
+    function setRewardForChildDomains(
+        string memory domainName,
+        uint256 rewardAmount
+    )
+        external
+        payable
+        domainExistence(domainName, true)
+        domainOwnedBySender(domainName)
+    {
         require(msg.value == rewardAmount, "Incorrect amount sent");
         rewards[domainName] = rewardAmount;
         emit RewardSet(domainName, rewardAmount);
     }
 
-function setDomainReward(string memory domainName, uint256 reward) external onlyOwner {
-    // Moved onlyOwner check to the start
-    require(domains[domainName].isRegistered, "Domain doesn't exist");
-    domainRewards[domainName] = reward;
-}
+    /**
+     * @dev Sets the reward for a specific domain.
+     * @param domainName The domain for which to set the reward.
+     * @param reward The reward amount to set.
+     */
+    function setDomainReward(
+        string memory domainName,
+        uint256 reward
+    ) external onlyOwner {
+        require(domains[domainName].isRegistered, "Domain doesn't exist");
+        domainRewards[domainName] = reward;
+    }
 
-    function claimReward(string memory childDomain) external domainExistence(childDomain, true) domainOwnedBySender(childDomain) {
+    /**
+     * @dev Claims a reward for a child domain.
+     * @param childDomain The child domain for which to claim the reward.
+     */
+    function claimReward(
+        string memory childDomain
+    )
+        external
+        domainExistence(childDomain, true)
+        domainOwnedBySender(childDomain)
+    {
         require(!rewardsClaimed[childDomain], "Reward already claimed");
-        string memory parentDomain = DomainUtils.extractParentDomain(childDomain);
-        require(rewards[parentDomain] > 0, "No reward set by parent domain");
-        
-        uint256 rewardAmount = rewards[parentDomain];
-        rewards[parentDomain] = 0; // Reset reward amount for parent domain
-        rewardsClaimed[childDomain] = true; // Mark reward as claimed for child domain
+        string memory parentDomain = DomainUtils.extractParentDomain(
+            childDomain
+        );
+        uint256 rewardAmount = rewards[parentDomain]; // Retrieve the reward before transferring
 
-        payable(domains[childDomain].owner).sendValue(rewardAmount);
+        require(rewardAmount > 0, "No reward set by parent domain");
+        rewards[parentDomain] = 0; // Zero out the reward before transferring to prevent reentrancy
+
+        address payable recipient = payable(domains[childDomain].owner);
+        bool transferSuccess = false;
+
+        // Attempt the transfer
+        (transferSuccess, ) = recipient.call{value: rewardAmount}("");
+
+        require(transferSuccess, "Transfer failed");
+
+        rewardsClaimed[childDomain] = true;
+
         emit RewardClaimed(childDomain, rewardAmount);
     }
 
-    // Modify the registerDomain function to inherit rewards if available from the parent domain
-function registerDomain(string memory domainName) 
-    public 
-    payable 
-    isValidDomain(domainName)
-    domainExistence(domainName, false)
-{
-    require(msg.value == domainPrice, "Incorrect amount sent");
+    /**
+     * @dev Registers a domain.
+     * @param domainName The domain to register.
+     */
+    function registerDomain(
+        string memory domainName
+    )
+        public
+        payable
+        isValidDomain(domainName)
+        domainExistence(domainName, false)
+    {
+        require(msg.value == domainPrice, "Incorrect amount sent");
 
-    domainName = domainName.stripProtocol();
+        domainName = domainName.stripProtocol();
 
-    string memory parentDomain = DomainUtils.extractParentDomain(domainName);
-    if (bytes(parentDomain).length > 0) {
-        require(domains[parentDomain].isRegistered, "Parent domain doesn't exist");
-        // Inherit rewards from parent domain
-        domainRewards[domainName] = domainRewards[parentDomain];
+        string memory parentDomain = DomainUtils.extractParentDomain(
+            domainName
+        );
+        if (bytes(parentDomain).length > 0) {
+            require(
+                domains[parentDomain].isRegistered,
+                "Parent domain doesn't exist"
+            );
+            domainRewards[domainName] = domainRewards[parentDomain];
+        }
+
+        domains[domainName] = Domain({isRegistered: true, owner: msg.sender});
+
+        emit DomainRegistered(domainName, msg.sender);
     }
 
-    domains[domainName] = Domain({
-        isRegistered: true,
-        owner: msg.sender
-    });
-
-    emit DomainRegistered(domainName, msg.sender);
-}
-
-    function releaseDomain(string memory domainName) public domainExistence(domainName, true) domainOwnedBySender(domainName) {
+    /**
+     * @dev Releases a domain.
+     * @param domainName The domain to release.
+     */
+    function releaseDomain(
+        string memory domainName
+    ) public domainExistence(domainName, true) domainOwnedBySender(domainName) {
         domainName = domainName.stripProtocol();
         delete domains[domainName];
         emit DomainReleased(domainName);
     }
 
+    /**
+     * @dev Withdraws funds from the contract.
+     */
     function withdraw() external onlyOwner {
         uint256 balance = address(this).balance;
-        require(balance > 0, "No funds to withdraw");
-        payable(owner()).sendValue(balance);
+        require(balance > 0, "Withdrawal amount must be greater than 0");
+        payable(owner()).transfer(balance);
     }
 }
