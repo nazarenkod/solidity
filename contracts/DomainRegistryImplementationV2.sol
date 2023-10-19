@@ -7,24 +7,24 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "./DomainUtils.sol";
 
 /**
- * @title DomainRegistryImplementationV2
- * @dev This contract allows users to register and manage domains.
+ * @title Domain Registry Implementation
+ * @dev This contract allows users to register and manage domain names.
  */
 contract DomainRegistryImplementationV2 is Initializable, OwnableUpgradeable {
-    using Address for address payable;
-    using DomainUtils for string;
-
-    uint256 public domainPrice;
-
     struct Domain {
         bool isRegistered;
         address owner;
     }
+    using Address for address payable;
+    using DomainUtils for string;
 
+    uint256 public domainPrice;
     mapping(string => Domain) public domains;
     mapping(string => uint256) public rewards;
     mapping(string => bool) public rewardsClaimed;
     mapping(string => uint256) public domainRewards;
+
+    address public developmentTeam;
 
     event DomainRegistered(string indexed domainName, address indexed owner);
     event DomainReleased(string indexed domainName);
@@ -32,13 +32,17 @@ contract DomainRegistryImplementationV2 is Initializable, OwnableUpgradeable {
     event RewardClaimed(string indexed childDomain, uint256 rewardAmount);
 
     /**
-     * @dev Initializes the contract.
+     * @dev Initializes the contract with default values.
      */
     function initialize() public initializer {
         __Ownable_init();
         domainPrice = 1 ether;
+        developmentTeam = msg.sender; // Set the development team's address
     }
 
+    /**
+     * @dev Modifier to check if a domain name is valid.
+     */
     modifier isValidDomain(string memory _domainName) {
         _domainName = _domainName.stripProtocol();
         require(bytes(_domainName).length > 0, "Domain is empty");
@@ -50,6 +54,9 @@ contract DomainRegistryImplementationV2 is Initializable, OwnableUpgradeable {
         _;
     }
 
+    /**
+     * @dev Modifier to check if the sender is the owner of a domain.
+     */
     modifier domainOwnedBySender(string memory domainName) {
         domainName = domainName.stripProtocol();
         require(
@@ -59,6 +66,9 @@ contract DomainRegistryImplementationV2 is Initializable, OwnableUpgradeable {
         _;
     }
 
+    /**
+     * @dev Modifier to check the existence of a domain.
+     */
     modifier domainExistence(string memory domainName, bool shouldExist) {
         bool exists = domains[domainName.stripProtocol()].owner != address(0);
         if (shouldExist) {
@@ -70,7 +80,7 @@ contract DomainRegistryImplementationV2 is Initializable, OwnableUpgradeable {
     }
 
     /**
-     * @dev Sets the price for registering a domain.
+     * @dev Sets the price for domain registration.
      * @param _price The new domain registration price.
      */
     function setDomainPrice(uint256 _price) external onlyOwner {
@@ -79,7 +89,7 @@ contract DomainRegistryImplementationV2 is Initializable, OwnableUpgradeable {
 
     /**
      * @dev Sets a reward for child domains.
-     * @param domainName The parent domain for which to set the reward.
+     * @param domainName The domain for which to set the reward.
      * @param rewardAmount The reward amount to set.
      */
     function setRewardForChildDomains(
@@ -97,7 +107,7 @@ contract DomainRegistryImplementationV2 is Initializable, OwnableUpgradeable {
     }
 
     /**
-     * @dev Sets the reward for a specific domain.
+     * @dev Sets the reward for a domain.
      * @param domainName The domain for which to set the reward.
      * @param reward The reward amount to set.
      */
@@ -143,8 +153,8 @@ contract DomainRegistryImplementationV2 is Initializable, OwnableUpgradeable {
     }
 
     /**
-     * @dev Registers a domain.
-     * @param domainName The domain to register.
+     * @dev Registers a domain name.
+     * @param domainName The domain name to register.
      */
     function registerDomain(
         string memory domainName
@@ -172,11 +182,16 @@ contract DomainRegistryImplementationV2 is Initializable, OwnableUpgradeable {
         domains[domainName] = Domain({isRegistered: true, owner: msg.sender});
 
         emit DomainRegistered(domainName, msg.sender);
+
+        // Distribute a portion of the registration fee to the development team
+        uint256 developmentTeamReward = msg.value / 10; // 10% goes to the development team
+        address payable developmentTeamAddress = payable(developmentTeam);
+        developmentTeamAddress.transfer(developmentTeamReward);
     }
 
     /**
-     * @dev Releases a domain.
-     * @param domainName The domain to release.
+     * @dev Releases a domain name.
+     * @param domainName The domain name to release.
      */
     function releaseDomain(
         string memory domainName
@@ -187,7 +202,7 @@ contract DomainRegistryImplementationV2 is Initializable, OwnableUpgradeable {
     }
 
     /**
-     * @dev Withdraws funds from the contract.
+     * @dev Allows the owner to withdraw funds from the contract.
      */
     function withdraw() external onlyOwner {
         uint256 balance = address(this).balance;
