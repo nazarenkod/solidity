@@ -6,7 +6,11 @@
   "scripts": {
     "hardhat:node": "hardhat node",
     "hardhat:compile": "hardhat compile",
-    "hardhat:test": "hardhat test"
+    "hardhat:test": "hardhat test",
+    "hardhat:compile&test": "hardhat compile && hardhat test",
+    "slither": "slither ./contracts",
+    "lint:contracts": "npx solhint contracts/**/*.sol",
+    "lint:contracts:format": "npx prettier --write contracts/**/*.sol"
   },
   "keywords": [],
   "author": "Dmytro Nazarenko",
@@ -16,6 +20,8 @@
     "@openzeppelin/contracts-upgradeable": "^4.9.3",
     "@openzeppelin/hardhat-upgrades": "^2.2.1",
     "@nomicfoundation/hardhat-toolbox": "^3.0.0",
-    "ethers": "^6.7.1"
+    "ethers": "^6.7.1",
+    "solhint": "^3.6.2",
+    "solhint-plugin-prettier": "^0.0.5"
   }
 }

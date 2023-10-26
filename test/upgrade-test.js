@@ -27,15 +27,11 @@ describe("DomainRegistryUpgrade", function () {
     
 
     const DomainRegistryV2 = await ethers.getContractFactory("DomainRegistryImplementationV2");
-    domainRegistryV2 = await upgrades.upgradeProxy("0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0", DomainRegistryV2);
+    domainRegistryV2 = await upgrades.upgradeProxy("0x4631BCAbD6dF18D94796344963cB60d44a4136b6", DomainRegistryV2);
     console.log("DomainRegistryImplementationV2 deployed to:",await domainRegistryV2.getAddress());
     const domainInfoV2 = await domainRegistryV2.domains(_topLevelDomain);
     expect(domainInfoV2.isRegistered).to.be.true;
 
-    // // Check if the domain exists in V2
-    // const isRegisteredInV2 = await domainRegistryV2.domains(domainName);
-    
-    // // Assert that the domain is registered in V2
-    // expect(isRegisteredInV2.isRegistered).to.equal(true);
+
   });
 });
